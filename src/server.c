@@ -4,21 +4,12 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <pthread.h>
+#include <sys/socket.h>
+#include "game_logic.h"
 
 #define PORT 12345
-#define MAX_PLAYERS 4
 #define BUFFER_SIZE 1024
 
-typedef struct {
-    int socket;
-    char name[50];
-} Player;
-
-typedef struct {
-    Player players[MAX_PLAYERS];
-    int current_player_index;
-    int num_players;
-} Game;
 
 void *handle_client(void *arg);
 void start_game(Game *game);
@@ -41,7 +32,7 @@ int main() {
     printf("Server started on port %d...\n", PORT);
 
     Game *game = malloc(sizeof(Game));
-    game->num_players = 0;
+    init_game(game);
 
     while ((client_socket = accept(server_socket, (struct sockaddr *)&client_addr, &client_len))) {
         if (game->num_players < MAX_PLAYERS) {

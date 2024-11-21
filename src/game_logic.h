@@ -1,7 +1,17 @@
 #ifndef GAME_LOGIC_H
 #define GAME_LOGIC_H
 
+#include <stdio.h>
+#include <pthread.h>
+#include <stdlib.h>
+#include <string.h>
+#include <arpa/inet.h>
+#include <sys/time.h>
+#include <time.h>
 #include <stdbool.h>
+#define MAX_PLAYERS 2
+#define MAX_GAMES 10
+#define MAX_CARDS 56
 
 typedef enum
 {
@@ -46,22 +56,28 @@ typedef struct {
 } Player;
 
 typedef struct {
-    Player players[4];  // Max players per game
-    Card deck[52];       // Deck of cards
+    Player players[MAX_PLAYERS];  // Max players per game
+    Card deck[MAX_CARDS];       // Deck of cards
+    Card pile[MAX_CARDS];      // Discard pile
     int deck_index;
-    int current_player;   // Index of the current player
+    int pile_index;
+    int current_player_index;   // Index of the current player
     int num_players;    // Current number of players in the game
-    int num_active;     // Active players
     bool game_over;
+    int attack_stack;
 } Game;
 
 typedef struct {
-    Game games[10];     // Array of games the server can manage
+    Game games[MAX_GAMES];     // Array of games the server can manage
     int num_games;      // Number of active games
 } ServerState;
 
 void init_game(Game *game);
 void init_deck(Card *deck);
-void handle_player_action(Game *game, int player_id, char *action);
+void handle_player_action(Game *game, int player_id, Action action);
+void init_players_hands(Game *game);
+void shuffle_deck(Card *deck, int n);
+void print_cards(Card *hand, int n);
+void handle_turn(Game* game, int player_id);
 
 #endif //GAME_LOGIC_H
