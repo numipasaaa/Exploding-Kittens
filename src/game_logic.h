@@ -65,6 +65,8 @@ typedef struct {
     int num_players;    // Current number of players in the game
     bool game_over;
     int attack_stack;
+    bool skip_active;
+    bool safe_from_attack;
 } Game;
 
 typedef struct {
@@ -78,6 +80,7 @@ void handle_player_action(Game *game, int player_id, Action action);
 void init_players_hands(Game *game);
 void shuffle_deck(Card *deck, int n);
 void print_cards(Card *hand, int n);
-void handle_turn(Game* game, int player_id);
+void handle_turn(Game* game);
+int search_card(Card* hand, int hand_size, CardType type);
 
 #endif //GAME_LOGIC_H

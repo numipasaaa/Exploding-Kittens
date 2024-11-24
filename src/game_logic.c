@@ -55,6 +55,18 @@ void print_cards(Card* hand, int n)
     }
 }
 
+int search_card(Card* hand, int hand_size, CardType type)
+{
+    for (int i = 0; i < hand_size; i++)
+    {
+        if (hand[i].type == type)
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
 void shuffle_deck(Card *deck, int n) {
     time_t curtime;
     time(&curtime);
@@ -78,7 +90,7 @@ void init_players_hands(Game *game) {
         game->players[i].num_cards = 8;
     }
 
-    for (int i = 0; i < MAX_PLAYERS - 1; i++) {        // 4x Exploding Kitten
+    for (int i = 0; i < MAX_PLAYERS - 1; i++) {
         game->deck[++(game->deck_index)].type = EXPLODING_KITTEN;
     }
     for (int i = 0; i < 2; i++) {        // 2x Defuse
@@ -125,24 +137,78 @@ void init_deck(Card *deck) {
 }
 
 void init_game(Game *game) {
-    game->current_player_index = 0;
+  	time_t curtime;
+    time(&curtime);
+    srand(curtime);
+
+    game->current_player_index = rand() % 2;
     game->num_players = 0;
     game->deck_index = 45;
     game->pile_index = 0;
     game->game_over = false;
     game->attack_stack = 0;
+    game->skip_active = false;
+    game->safe_from_attack = false;
     init_deck(game->deck);
+}
+
+void use_defuse(Game* game, int player_id, int card_index)
+{
+    for (int i = card_index; i < game->players[player_id].num_cards - 1; i++)
+    {
+        game->players[player_id].hand[i] = game->players[player_id].hand[i + 1];
+        game->players[player_id].num_cards--;
+    }
+}
+
+void reinsert_exploding_kitten(Game* game, int player_id)
+{
+    int index;
+
+   	printf("Index to reinsert(0-%d): ", game->deck_index);
+    scanf("%d", &index);
+
+    for (int i = game->deck_index; i > index; i--)
+    {
+        game->deck[i] = game->deck[i - 1];
+    }
+
+    game->deck[index].type = EXPLODING_KITTEN;
+}
+
+void handle_explosion(Game* game, int player_id)
+{
+    int defuse_index = search_card(game->players[player_id].hand, game->players[player_id].num_cards, DEFUSE);
+    if (defuse_index != -1)
+    {
+        use_defuse(game, player_id, defuse_index);
+        reinsert_exploding_kitten(game, player_id);
+
+    }
+    else
+    {
+        game->num_players--;
+    }
 }
 
 void draw_card(Game* game, int player_id)
 {
-    game->players[player_id].hand[game->players[player_id].num_cards] = game->deck[game->deck_index];
-    game->players[player_id].num_cards++;
-    game->deck_index--;
+  	if (game->deck[game->deck_index].type == EXPLODING_KITTEN)
+    {
+        printf("EXPLODING KITTEN!\n");
+        handle_explosion(game, player_id);
+    }
+    else
+    {
+    	game->players[player_id].hand[game->players[player_id].num_cards] = game->deck[game->deck_index];
+    	game->players[player_id].num_cards++;
+    	game->deck_index--;
+    }
 }
 
 void play_card(Game* game, int player_id, int card_index)
 {
+    int next_player_idx;
     game->pile[(game->pile_index)++] = game->players[player_id].hand[card_index];
 
     for (int i = card_index; i < game->players[player_id].num_cards - 1; i++) {
@@ -159,11 +225,18 @@ void play_card(Game* game, int player_id, int card_index)
         	break;
     	case ATTACK:
         	game->attack_stack += 2;
+            game->skip_active = true;
+            game->safe_from_attack = true;
         	break;
         case SKIP:
         	if (game->attack_stack > 0) {
             	game->attack_stack--;
         	}
+            game->skip_active = true;
+        	break;
+        case SHUFFLE:
+            next_player_idx = (player_id == 0) ? 1 : 0;
+        	shuffle_deck(game->deck, game->deck_index + 1);
         	break;
     	default:
         	break;
@@ -175,50 +248,63 @@ void handle_player_action(Game* game, int player_id, Action action)
   	int card_index;
     switch (action.type) {
         case PLAY_CARD:
-          	printf("Enter card index: ");
+          	printf("Play card: ");
             scanf("%d", &card_index);
             play_card(game, player_id, card_index);
             break;
         case DRAW_CARD:
+            draw_card(game, player_id);
             break;
         case END_TURN:
+          	draw_card(game, player_id);
+
+            if (game->attack_stack > 0) {
+                game->attack_stack--;
+            } else {
+            	game->current_player_index = (player_id == 0) ? 1 : 0;
+            }
             break;
         default:
             break;
     }
 }
 
-void handle_turn(Game* game, int player_id)
+void handle_turn(Game* game)
 {
+    int player_id = game->current_player_index;
     Action action;
-    action.type = PLAY_CARD;
-    handle_player_action(game, player_id, action);
 
-    if (game->num_players == 1) {
-        game->game_over = true;
-        return;
-    }
+    do {
+        printf("\nPlayer %d's turn\n", player_id + 1);
+        printf("Hand:\n");
+        print_cards(game->players[player_id].hand, game->players[player_id].num_cards);
+        printf("Action:\n");
+        printf("1. Play card\n");
+        printf("2. End turn\n");
+        printf("Choose action: ");
+        scanf("%d", &action.type);
+        handle_player_action(game, player_id, action);
 
-    switch (game->pile[game->pile_index - 1].type) {
-        case EXPLODING_KITTEN:
+        if (game->num_players == 1) {
+            game->game_over = true;
+            return;
+        }
+
+        if (game->skip_active && (game->attack_stack == 0 || game->safe_from_attack)) {
+            action.type = END_TURN;
+            handle_player_action(game, player_id, action);
+            game->safe_from_attack = false;
+            game->skip_active = false;
             break;
-        case ATTACK:
-            break;
-        case NOPE:
-            break;
-        case TACOCAT:
-            break;
-        case CATTERMELON:
-            break;
-        case POTATO:
-            break;
-        case BEARD:
-            break;
-        case RAINBOW:
-            break;
-        default:
-            break;
-    }
+        } else if (game->skip_active) {
+            game->skip_active = false;
+            continue;
+        }
+
+        if (game->attack_stack > 0) {
+            	game->attack_stack--;
+        }
+    } while (game->attack_stack > 0 || action.type == PLAY_CARD);
 }
 
 
