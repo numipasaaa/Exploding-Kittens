@@ -67,6 +67,7 @@ typedef struct {
     int attack_stack;
     bool skip_active;
     bool safe_from_attack;
+    bool not_entered_special;
 } Game;
 
 typedef struct {
@@ -81,6 +82,15 @@ void init_players_hands(Game *game);
 void shuffle_deck(Card *deck, int n);
 void print_cards(Card *hand, int n);
 void handle_turn(Game* game);
-int search_card(Card* hand, int hand_size, CardType type);
+int search_card(Card* hand, int hand_size, CardType type, int ignore_index);
+void handle_special_card(Game* game, int player_id, CardType card);
+void play_card(Game* game, int player_id, int card_index);
+void use_defuse(Game* game, int player_id, int card_index);
+void reinsert_exploding_kitten(Game* game, int player_id);
+void handle_explosion(Game* game, int player_id);
+void draw_card_from_player(Game* game, int player_id, bool random);
+void handle_special_card(Game* game, int player_id, CardType card);
+void handle_favor(Game* game, int player_id);
+void draw_card(Game* game, int player_id);
 
 #endif //GAME_LOGIC_H
