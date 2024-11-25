@@ -1,6 +1,7 @@
 #ifndef GAME_LOGIC_H
 #define GAME_LOGIC_H
 
+#define _XOPEN_SOURCE
 #include <stdio.h>
 #include <pthread.h>
 #include <stdlib.h>

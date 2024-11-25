@@ -1,4 +1,3 @@
-#define _XOPEN_SOURCE
 #include "game_logic.h"
 
 void print_cards(Card* hand, int n)
