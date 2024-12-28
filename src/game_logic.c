@@ -428,7 +428,7 @@ void handle_turn(Game* game)
         printf("1. Play card\n");
         printf("2. End turn\n");
         printf("Choose action: ");
-        scanf("%d", &action.type);
+        scanf("%d", (int*)&action.type);
         handle_player_action(game, player_id, action);
 
         if (game->num_players == 1) {
