@@ -4,15 +4,20 @@
 #define _XOPEN_SOURCE
 #include <stdio.h>
 #include <pthread.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
 #include <arpa/inet.h>
 #include <sys/time.h>
 #include <time.h>
+#include <sys/socket.h>
+#include <ncurses.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #define MAX_PLAYERS 2
-#define MAX_GAMES 10
+#define MAX_GAMES 5
 #define MAX_CARDS 56
+#define BUFFER_SIZE 1024
 
 typedef enum
 {
@@ -81,8 +86,9 @@ void init_deck(Card *deck);
 void handle_player_action(Game *game, int player_id, Action action);
 void init_players_hands(Game *game);
 void shuffle_deck(Card *deck, int n);
-void print_cards(Card *hand, int n);
-void handle_turn(Game* game);
+void print_cards(int socket, Card *hand, int n);
+void print_cards_server(Card *hand, int n);
+void handle_turn(Game* game, int socket);
 int search_card(Card* hand, int hand_size, CardType type, int ignore_index);
 void handle_special_card(Game* game, int player_id, CardType card);
 void play_card(Game* game, int player_id, int card_index);
