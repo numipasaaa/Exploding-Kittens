@@ -15,7 +15,7 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #define MAX_PLAYERS 2
-#define MAX_GAMES 5
+#define MAX_GAMES 2
 #define MAX_CARDS 56
 #define BUFFER_SIZE 1024
 
@@ -59,6 +59,7 @@ typedef struct {
     char name[50];      // Player name
     Card hand[50];       // Player's hand
     int num_cards;      // Number of cards in hand
+    bool not_entered_special;
 } Player;
 
 typedef struct {
@@ -73,7 +74,7 @@ typedef struct {
     int attack_stack;
     bool skip_active;
     bool safe_from_attack;
-    bool not_entered_special;
+    int game_idx;
 } Game;
 
 typedef struct {

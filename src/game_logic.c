@@ -210,7 +210,6 @@ void init_game(Game *game) {
     game->attack_stack = 0;
     game->skip_active = false;
     game->safe_from_attack = false;
-    game->not_entered_special = true;
     init_deck(game->deck);
 }
 
@@ -386,7 +385,7 @@ void handle_special_card(Game* game, int player_id, CardType card)
     char buffer[2];
     char buf[BUFFER_SIZE];
 
-    if (game->not_entered_special)
+    if (game->players[player_id].not_entered_special)
     {
       	if (special_idx1 != -1)
         {
@@ -418,10 +417,12 @@ void handle_special_card(Game* game, int player_id, CardType card)
 
         if (combo == 2)
         {
+            game->players[player_id].not_entered_special = false;
             play_card(game, player_id, special_idx1);
             play_card(game, player_id, special_idx2);
             draw_card_from_player(game, player_id, false);
         } else if (combo == 1) {
+            game->players[player_id].not_entered_special = false;
             play_card(game, player_id, special_idx1);
             draw_card_from_player(game, player_id, true);
         }
@@ -647,7 +648,7 @@ void handle_player_action(Game* game, int player_id, Action action)
     char buf[BUFFER_SIZE] = "";
     switch (action.type) {
         case PLAY_CARD:
-            printf("%s: Play card\n", game->players[player_id].name);
+            printf("(Game %d) %s: Play card\n", game->game_idx + 1, game->players[player_id].name);
 
             explicit_bzero(buf, BUFFER_SIZE);
             strcpy(buf, "Play card: ");
@@ -665,7 +666,7 @@ void handle_player_action(Game* game, int player_id, Action action)
                         card_index = strtol(buffer, NULL, 10);
                         break;
                     }
-                } else if (('1' <= buffer[0] && buffer[0] <= 9) && ('0' <= buffer[1] && buffer[1] <= '9'))
+                } else if (('1' <= buffer[0] && buffer[0] <= '9') && ('0' <= buffer[1] && buffer[1] <= '9'))
                 {
                     card_index = strtol(buffer, NULL, 10);
                     break;
@@ -676,7 +677,7 @@ void handle_player_action(Game* game, int player_id, Action action)
             play_card(game, player_id, card_index);
             break;
         case END_TURN:
-            printf("%s: End turn\n", game->players[player_id].name);
+            printf("(Game %d) %s: End turn\n", game->game_idx + 1, game->players[player_id].name);
           	draw_card(game, player_id);
 
             if (game->attack_stack > 0) {
@@ -698,7 +699,7 @@ void handle_player_action(Game* game, int player_id, Action action)
 void handle_turn(Game* game, int socket)
 {
     int player_id = game->current_player_index;
-    game->not_entered_special = true;
+
     Action action;
     int client_idx;
     char rematch[2];
@@ -710,7 +711,7 @@ void handle_turn(Game* game, int socket)
             break;
         }
     }
-
+    game->players[client_idx].not_entered_special = true;
     do {
         char buf[BUFFER_SIZE];
 
@@ -752,6 +753,7 @@ void handle_turn(Game* game, int socket)
             explicit_bzero(buf, BUFFER_SIZE);
             sprintf(buf, "Waiting for %s to finish their turn...\n", game->players[game->current_player_index].name);
             write(socket, buf, sizeof(buf));
+            sleep(1);
             break;
         }
 
