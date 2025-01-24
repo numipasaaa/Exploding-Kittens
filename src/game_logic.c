@@ -485,7 +485,16 @@ void draw_card(Game* game, int player_id)
 {
   	if (game->deck[game->deck_index].type == EXPLODING_KITTEN)
     {
-        printf("EXPLODING KITTEN!\n");
+        printf("(Game %d) EXPLODING KITTEN!\n", game->game_idx + 1);
+
+        char buf[BUFFER_SIZE];
+        explicit_bzero(buf, BUFFER_SIZE);
+        strcpy(buf, "EXPLODING KITTEN!\n");
+        for (int i = 0; i < MAX_PLAYERS; i++)
+        {
+            write(game->players[i].socket, buf, sizeof(buf));
+        }
+
         handle_explosion(game, player_id);
     }
     else
@@ -536,12 +545,24 @@ void play_card(Game* game, int player_id, int card_index)
                 explicit_bzero(buffer, 2);
             }
         	if (nope_on == 't') {
+                char buf2[BUFFER_SIZE];
+                explicit_bzero(buf2, BUFFER_SIZE);
                 nope = !nope;
                 if (nope)
                 {
-                    printf("NOPE!\n");
+                    printf("(Game %d) NOPE!\n", game->game_idx + 1);
+                    strcpy(buf2, "NOPE!\n");
+                    for (int i = 0; i < MAX_PLAYERS; i++)
+                    {
+                        write(game->players[i].socket, buf2, sizeof(buf2));
+                    }
                 } else {
-                    printf("YUP!\n");
+                    printf("(Game %d) YUP!\n", game->game_idx + 1);
+                    strcpy(buf2, "YUP!\n");
+                    for (int i = 0; i < MAX_PLAYERS; i++)
+                    {
+                        write(game->players[i].socket, buf2, sizeof(buf2));
+                    }
                 }
           		for (int i = nope_index; i < game->players[next_player_idx].num_cards - 1; i++)
     			{

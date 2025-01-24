@@ -17,18 +17,20 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Enter username!\n");
         exit(1);
     }
+    // Initialize ncurses
+    initscr();
+    cbreak();
+    noecho();
+    keypad(stdscr, TRUE);
+    scrollok(stdscr, TRUE);
+
+
     int socket_fd;
     connect_to_server(&socket_fd);
 
-    // Initialize ncurses
-    // initscr();
-    // cbreak();
-    // noecho();
-    // keypad(stdscr, TRUE);
-
     play_game(socket_fd, argv[1]);
 
-    //endwin(); // End ncurses mode
+    endwin(); // End ncurses mode
     close(socket_fd);
     return 0;
 }
@@ -49,6 +51,7 @@ void connect_to_server(int *socket_fd) {
 
 void play_game(int socket_fd, char *username) {
     int n;
+    int c;
     char buffer[BUFFER_SIZE];
 
     send(socket_fd, username, BUFFER_SIZE, 0);
@@ -61,13 +64,30 @@ void play_game(int socket_fd, char *username) {
             perror("Error reading from socket");
         }
         buffer[n] = '\0';
-        printf("%s", buffer);
+        printw("%s", buffer);
+        refresh();
 
         if (strstr(buffer, "Choose option: ") != NULL || strstr(buffer, "Play card:") != NULL) {
             explicit_bzero(buffer, BUFFER_SIZE);
-            fgets(buffer, sizeof(buffer), stdin);
+            int i = 0;
+            while ((c = getch()) != '\n' && c != EOF)
+            {
+                if (c != -1)
+                {
+                    buffer[i++] = c;
+                    printw("%c", c);
+                    refresh();
+                }
+            }
+            buffer[i++] = '\n';
+            printw("\n");
+
+            buffer[i] = '\0';
+
             send(socket_fd, buffer, sizeof(buffer), 0);
         }
-
+        if (strstr(buffer, "Choose option: ") != NULL || strstr(buffer, "to finish their turn...")) {
+            clear();
+        }
     }
 }
