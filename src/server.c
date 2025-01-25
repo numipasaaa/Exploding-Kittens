@@ -98,7 +98,6 @@ void *handle_client(void *arg) {
     {
         if (game->num_players < MAX_PLAYERS)
         {
-            // printf("%d\n", game->num_players);
             explicit_bzero(buffer, BUFFER_SIZE);
             strcpy(buffer, "Waiting for other players to join...\n");
             write(player_socket, buffer, sizeof(buffer));

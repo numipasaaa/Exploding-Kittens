@@ -75,6 +75,7 @@ typedef struct {
     bool skip_active;
     bool safe_from_attack;
     int game_idx;
+    int rematch[MAX_PLAYERS];
 } Game;
 
 typedef struct {
