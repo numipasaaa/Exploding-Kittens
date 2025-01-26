@@ -90,12 +90,17 @@ int main(int argc, char *argv[]) {
 
 void connect_to_server(int *socket_fd) {
     struct sockaddr_in server_addr;
-    *socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if ((*socket_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    {
+        perror("Socket");
+        exit(1);
+    }
+    memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(PORT);
     inet_pton(AF_INET, SERVER_IP, &server_addr.sin_addr);
 
-    if (connect(*socket_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) == -1) {
+    if (connect(*socket_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
         perror("Connect failed");
         exit(1);
     }
@@ -132,7 +137,6 @@ void play_game(int socket_fd, char *username) {
     send(socket_fd, username, BUFFER_SIZE, 0);
 
     while (1) {
-        // Display game state (mockup)
         explicit_bzero(buffer, BUFFER_SIZE);
         n = recv(socket_fd, buffer, sizeof(buffer), 0);
         if (n < 0) {
@@ -370,6 +374,8 @@ void play_game(int socket_fd, char *username) {
                 }
 
                 box(menuwin, 0, 0);
+                getyx(menuwin, y, x);
+                mvwprintw(menuwin, y + 1, x + 1, " ");
                 refresh();
                 wrefresh(menuwin);
                 int i = 0;
@@ -377,12 +383,8 @@ void play_game(int socket_fd, char *username) {
                 {
                     if (c != -1)
                     {
-                        getyx(menuwin, y, x);
                         buffer[i++] = c;
-                        if (i == 1)
-                            mvwprintw(menuwin, y + 1, x + 1, "%c", c);
-                        else
-                            wprintw(menuwin, "%c", c);
+                        wprintw(menuwin, "%c", c);
                         refresh();
                     }
                 }

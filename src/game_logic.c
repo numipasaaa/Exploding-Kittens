@@ -258,6 +258,14 @@ void reinsert_exploding_kitten(Game* game, int player_id)
         }
         explicit_bzero(buffer, 3);
     }
+    if (index > game->deck_index + 1)
+    {
+        index = game->deck_index + 1;
+    }
+    if (index < 1)
+    {
+        index = 1;
+    }
     index--;
 
     for (int i = game->deck_index; i > index; i--)
@@ -288,13 +296,14 @@ void handle_explosion(Game* game, int player_id)
         explicit_bzero(buf, BUFFER_SIZE);
         strcpy(buf, "You won! :D\n");
         write(game->players[next_player_idx].socket, buf, sizeof(buf));
+        printf("(Game %d) %s won!\n", game->game_idx + 1, game->players[next_player_idx].name);
         game->num_players--;
     }
 }
 
 void draw_card_from_player(Game* game, int player_id, bool random)
 {
-	int next_player_idx = next_player_idx = (player_id == 0) ? 1 : 0;
+	int next_player_idx = (player_id == 0) ? 1 : 0;
     int card_index, card;
     char buf[BUFFER_SIZE];
     char buffer[3];
@@ -326,6 +335,14 @@ void draw_card_from_player(Game* game, int player_id, bool random)
                 break;
             }
             explicit_bzero(buffer, 3);
+        }
+        if (card_index > game->players[next_player_idx].num_cards)
+        {
+            card_index = game->players[next_player_idx].num_cards;
+        }
+        if (card_index < 1)
+        {
+            card_index = 1;
         }
         card_index--;
 		game->players[player_id].hand[game->players[player_id].num_cards] = game->players[next_player_idx].hand[card_index];
@@ -370,7 +387,7 @@ void draw_card_from_player(Game* game, int player_id, bool random)
         game->players[player_id].hand[game->players[player_id].num_cards] = game->players[next_player_idx].hand[card_index];
     }
 
-    for (int i = card_index; i < game->players[player_id].num_cards - 1; i++)
+    for (int i = card_index; i < game->players[next_player_idx].num_cards - 1; i++)
     {
         game->players[next_player_idx].hand[i] = game->players[next_player_idx].hand[i + 1];
     }
@@ -419,11 +436,13 @@ void handle_special_card(Game* game, int player_id, CardType card)
 
         if (combo == 2)
         {
+            printf("(Game %d) Three of a Kind!\n", game->game_idx + 1);
             game->players[player_id].not_entered_special = false;
             play_card(game, player_id, special_idx1);
             play_card(game, player_id, special_idx2);
             draw_card_from_player(game, player_id, false);
         } else if (combo == 1) {
+            printf("(Game %d) Two of a Kind!\n", game->game_idx + 1);
             game->players[player_id].not_entered_special = false;
             play_card(game, player_id, special_idx1);
             draw_card_from_player(game, player_id, true);
@@ -446,7 +465,7 @@ void handle_favor(Game* game, int player_id)
     print_cards(game->players[next_player_idx].socket, game->players[next_player_idx].hand, game->players[next_player_idx].num_cards);
 
     explicit_bzero(buf, BUFFER_SIZE);
-    sprintf(buf, "Card index to draw(1-%d)\n", game->players[next_player_idx].num_cards);
+    sprintf(buf, "Card position to draw(1-%d)\n", game->players[next_player_idx].num_cards);
     write(game->players[next_player_idx].socket, buf, sizeof(buf));
 
     explicit_bzero(buf, BUFFER_SIZE);
@@ -470,6 +489,15 @@ void handle_favor(Game* game, int player_id)
             break;
         }
         explicit_bzero(buffer, 3);
+    }
+
+    if (card_index > game->players[next_player_idx].num_cards)
+    {
+        card_index = game->players[next_player_idx].num_cards;
+    }
+    if (card_index < 1)
+    {
+        card_index = 1;
     }
 
     card_index--;
@@ -586,7 +614,7 @@ void play_card(Game* game, int player_id, int card_index)
         }
     }
 
-    printf("Card played: ");
+    printf("(Game %d) Card played: ", game->game_idx + 1);
     print_cards_server(&game->pile[game->pile_index - 1], 1);
 
     switch (game->pile[game->pile_index - 1].type) {
@@ -806,7 +834,7 @@ void handle_turn(Game* game, int socket)
             for (int i = 0; i < MAX_PLAYERS; i++)
             {
                 explicit_bzero(buf, BUFFER_SIZE);
-                strcpy(buf, "Do you want a rematch?\n");
+                strcpy(buf, "Do you want a rematch?\nYou will have to wait 10 seconds for the game to restart.\n");
                 write(game->players[i].socket, buf, sizeof(buf));
 
                 explicit_bzero(buf, BUFFER_SIZE);
@@ -827,12 +855,15 @@ void handle_turn(Game* game, int socket)
                     explicit_bzero(buffer, 2);
                 }
             }
+
             while (game->rematch[0] == 2 || game->rematch[1] == 2)
             {
                 sleep(1);
             }
+
             if (game->rematch[0] == 1 && game->rematch[1] == 1)
             {
+                printf("(Game %d) Rematch!\n", game->game_idx + 1);
                 init_game(game);
                 game->num_players = MAX_PLAYERS;
                 init_players_hands(game);

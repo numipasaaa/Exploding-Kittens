@@ -22,7 +22,7 @@ pthread_mutex_t game_lock = PTHREAD_MUTEX_INITIALIZER;
 void *handle_client(void *arg);
 void *handle_game(void *arg);
 
-int main() {
+int main(void) {
     int server_socket;
     struct sockaddr_in server_addr;
     pthread_t th[MAX_GAMES];
@@ -30,12 +30,20 @@ int main() {
     Game games[MAX_GAMES];
     ServerData server_data[MAX_GAMES];
 
-    server_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if ((server_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        perror("Socket");
+        exit(1);
+    }
+
+    memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(PORT);
     server_addr.sin_addr.s_addr = INADDR_ANY;
 
-    bind(server_socket, (struct sockaddr *)&server_addr, sizeof(server_addr));
+    if (bind(server_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+        perror("Bind");
+        exit(1);
+    }
 
     printf("Server started on port %d...\n", PORT);
     for (int i = 0; i < MAX_GAMES; i++)
@@ -45,7 +53,11 @@ int main() {
         games[i].game_idx = i;
         server_data[i].game = &games[i];
         server_data[i].server_socket = server_socket;
-        pthread_create(&th[i], NULL, handle_game, (void *)&server_data[i]);
+
+        if (pthread_create(&th[i], NULL, handle_game, (void *)&server_data[i]) != 0)
+        {
+            exit(EXIT_FAILURE);
+        }
         pthread_detach(th[i]);
         sleep(1);
     }
@@ -65,19 +77,34 @@ void *handle_game(void *arg) {
     pthread_t thread_id;
     socklen_t client_len = sizeof(client_addr);
     int count = 0;
+    int r = 0;
 
-    listen(server_socket, MAX_PLAYERS);
+    if (listen(server_socket, MAX_PLAYERS) < 0) {
+        perror("Listen");
+        exit(1);
+    }
 
-    pthread_mutex_lock(&game_lock);
+    if ((r = pthread_mutex_lock(&game_lock)) != 0)
+    {
+        fprintf(stderr, "Mutex lock error: %s\n", strerror(r));
+        pthread_exit(NULL);
+    }
     while ((game->num_players < MAX_PLAYERS) && (client_socket = accept(server_socket, (struct sockaddr *)&client_addr, &client_len))) {
 
         game->players[count++].socket = client_socket;
         game->num_players = count;
 
-        pthread_create(&thread_id, NULL, handle_client, (void *)game);
+        if (pthread_create(&thread_id, NULL, handle_client, (void *)game) != 0)
+        {
+            exit(EXIT_FAILURE);
+        }
         pthread_detach(thread_id);
     }
-    pthread_mutex_unlock(&game_lock);
+    if ((r = pthread_mutex_unlock(&game_lock)) != 0)
+    {
+        fprintf(stderr, "Mutex unlock error: %s\n", strerror(r));
+        pthread_exit(NULL);
+    }
 
     return NULL;
 }
@@ -85,14 +112,15 @@ void *handle_game(void *arg) {
 void *handle_client(void *arg) {
     Game *game = (Game *)arg;
     int player_socket = game->players[game->num_players - 1].socket;
+    int player_id = game->num_players - 1;
     char buffer[BUFFER_SIZE];
 
     explicit_bzero(buffer, BUFFER_SIZE);
     read(player_socket, buffer, BUFFER_SIZE - 1);
     buffer[strlen(buffer)] = '\0';
-    strcpy(game->players[game->num_players - 1].name, buffer);
+    strcpy(game->players[player_id].name, buffer);
 
-    printf("%s connected.\n", game->players[game->num_players - 1].name);
+    printf("%s connected.\n", game->players[player_id].name);
 
     while (!game->game_over)
     {
@@ -107,8 +135,13 @@ void *handle_client(void *arg) {
         {
             handle_turn(game, player_socket);
         }
+        if (game->game_over)
+        {
+            sleep(10);
+        }
     }
 
+    printf("%s disconnected.\n", game->players[player_id].name);
     close(player_socket);
     return NULL;
 }
